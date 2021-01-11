@@ -6,7 +6,7 @@ Sometimes, for small job postings, we might want to make it easy on the applican
 
 Introducing Trakario, an automatic email-integrated applicant tracking system. Trakario hooks into your email to automatatically parse applicant emails, providing an organized, comprehensive view of each applicant.
 
-
+![trakario-screenshot](https://user-images.githubusercontent.com/5875019/104210529-9c0ca000-53f8-11eb-9ad8-c2ee0b5c5a72.png)
 
 ## Setup
 
