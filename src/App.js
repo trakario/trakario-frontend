@@ -50,6 +50,7 @@ const stages = [
   "considering-accepting",
   "considering-rejecting",
   "invite-sent",
+  "scheduled",
   "pending-evaluation",
   "unprocessed",
 
