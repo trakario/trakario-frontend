@@ -603,6 +603,7 @@ function ApplicantPage(props) {
   }, [applicantId]);
   const d = applicantData;
   const ratings = (applicantData || {}).ratings || [];
+  const [isEditingName, setIsEditingName] = useState(false);
   return (
     <>
       <div style={{ height: "2vh" }} />
@@ -619,7 +620,29 @@ function ApplicantPage(props) {
         <>
           <Row gutter={20} align="middle">
             <Col key="name">
-              <h1>{d.name}</h1>
+              {isEditingName ? (
+                <Form
+                onFinish={(values) =>
+                  apiRequest(`/applicants/${applicantId}/name`, {
+                    method: "PUT",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Accept: "application/json",
+                    },
+                    body: JSON.stringify(values.name),
+                  }).then((v) => {
+                    setApplicantData({ ...d, name: v });
+                    setIsEditingName(false);
+                  })
+                }
+              >
+                <Form.Item noStyle name="name" initialValue={d.name}>
+                  <Input placeholder="Applicant Name"></Input>
+                </Form.Item>
+              </Form>
+              ) : (
+                <h1 onClick={() => setIsEditingName(true)}>{d.name}</h1>
+              )}
             </Col>
             {d.githubUrl ? (
               <Col key="github">
