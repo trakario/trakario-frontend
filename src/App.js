@@ -317,6 +317,16 @@ function MainPage() {
           render={(date) => <DateTag date={date} />}
         />
         <Column
+          title="Rating"
+          dataIndex="ratings"
+          key="ratings"
+          render={(ratings) => {
+            let average = (array) =>
+              array.reduce((a, b) => a + b) / array.length;
+            return ratings.length > 0 ? <Rate disabled value={average(ratings.map((x) => x.attributes.overall))} /> : <></>;
+          }}
+        />
+        <Column
           title="Stage"
           dataIndex="stage"
           key="stage"
@@ -425,14 +435,8 @@ function AddRatingCard({ applicantId, onFinished, onCancel }) {
                     >{`${label}: `}</p>
                   </td>
                   <td>
-                    <Form.Item
-                      noStyle
-                      name={`attributes:${attrName}`}
-                      rules={[{ required: true }]}
-                    >
-                      <Rate
-                        onChange={(e) => console.log("Change of ", attrName, e)}
-                      />
+                    <Form.Item noStyle name={`attributes:${attrName}`}>
+                      <Rate />
                     </Form.Item>
                   </td>
                 </tr>
@@ -604,7 +608,7 @@ function RatingCard({
                   >{`${label}: `}</p>
                 </td>
                 <td>
-                  <Rate disabled defaultValue={attributes[attrName]} />
+                  <Rate disabled defaultValue={attributes[attrName] || 0} />
                 </td>
               </tr>
             );
