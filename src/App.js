@@ -18,6 +18,8 @@ import {
   Popover,
   List,
   Tooltip,
+  Switch,
+  Badge
 } from "antd";
 import "./App.less";
 import ReactMarkdown from "react-markdown";
@@ -28,7 +30,7 @@ import {
   Link,
   useLocation,
 } from "react-router-dom";
-import { DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined, SettingOutlined } from "@ant-design/icons";
 import { useQueryParam, StringParam } from "use-query-params";
 import Cookies from "universal-cookie";
 import TimeDiff from "js-time-diff";
@@ -198,7 +200,10 @@ function MainPage() {
   const [filter, setFilter] = useState(() => (x) => x.map(() => 1));
   const history = useHistory();
   const order = filter(data || []);
-  const [page, setPage] = useQueryParam('page');
+  const [page, setPage] = useQueryParam("page");
+  const [hideRatings, setHideRatings] = useState(
+    cookies.get("config:hideRatings")
+  );
   if (!page) {
     setPage(1);
   }
@@ -254,12 +259,57 @@ function MainPage() {
   };
   return (
     <>
-      <h1 style={{ margin: 20, marginLeft: 0, marginTop: 20, marginBottom: 0 }}>
-        Applicants
-      </h1>
-      <span style={{ marginLeft: 8 }}>
-        <i>Parsed via email</i>
-      </span>
+      <Row align="middle">
+        <Col>
+          <h1
+            style={{
+              margin: 20,
+              marginLeft: 0,
+              marginTop: 20,
+              marginBottom: 0,
+            }}
+          >
+            Applicants
+          </h1>
+          <span style={{ marginLeft: 8 }}>
+            <i>Parsed via email</i>
+          </span>
+        </Col>
+        <Col>
+          <Popover
+            content={
+              <List>
+                <List.Item>
+                  <div>
+                    Hide Ratings:
+                    <Switch
+                      style={{ marginLeft: 20 }}
+                      defaultChecked={
+                        cookies.get("config:hideRatings") === "true"
+                      }
+                      onChange={(value) => {
+                        cookies.set("config:hideRatings", value, {
+                          path: "/",
+                          maxAge: 60 * 60 * 24 * 7,
+                        });
+                        setHideRatings(value);
+                      }}
+                    />
+                  </div>
+                </List.Item>
+              </List>
+            }
+            title={
+              <div style={{ textAlign: "center" }}>
+                <b>Options</b>
+              </div>
+            }
+            trigger="click"
+          >
+            <Button type="text" shape="circle" icon={<SettingOutlined />} />
+          </Popover>
+        </Col>
+      </Row>
       <div style={{ height: 20 }} />
       <Searcher setFilter={setFilter} className="forward" />
       <div style={{ height: 24 }} />
@@ -268,8 +318,8 @@ function MainPage() {
         dataSource={sortedData}
         loading={data === undefined}
         className="forward-table"
-        pagination={{current: page}}
-        onChange={pagination => {
+        pagination={{ current: page }}
+        onChange={(pagination) => {
           setPage(pagination.current);
         }}
       >
@@ -331,7 +381,19 @@ function MainPage() {
           render={(ratings) => {
             let average = (array) =>
               array.reduce((a, b) => a + b) / array.length;
-            return ratings.length > 0 ? <Rate disabled value={average(ratings.map((x) => x.attributes.overall))} /> : <></>;
+            // return;
+            return hideRatings ? (
+              <Tag color={ratings.length > 0 ? ratings.length > 1 ? "green" : "orange" : ""}>{ratings.length} ratings</Tag>
+            ) : ratings.length > 0 ? (
+              <Badge count={ratings.length}>
+                <Rate
+                  disabled
+                  value={average(ratings.map((x) => x.attributes.overall))}
+                />
+              </Badge>
+            ) : (
+              <></>
+            );
           }}
         />
         <Column
@@ -616,7 +678,7 @@ function RatingCard({
                   >{`${label}: `}</p>
                 </td>
                 <td>
-                  <Rate disabled defaultValue={attributes[attrName] || 0} />
+                  {cookies.get('config:hideRatings') === 'true' ? <Tooltip title="Ratings Hidden" mouseEnterDelay={0.5}><Rate disabled defaultValue={0} className='hidden-rate' /> </Tooltip> : <Rate disabled defaultValue={attributes[attrName] || 0} />}
                 </td>
               </tr>
             );
