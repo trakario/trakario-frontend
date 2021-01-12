@@ -19,7 +19,7 @@ import {
   List,
   Tooltip,
   Switch,
-  Badge
+  Badge,
 } from "antd";
 import "./App.less";
 import ReactMarkdown from "react-markdown";
@@ -383,7 +383,17 @@ function MainPage() {
               array.reduce((a, b) => a + b) / array.length;
             // return;
             return hideRatings ? (
-              <Tag color={ratings.length > 0 ? ratings.length > 1 ? "green" : "orange" : ""}>{ratings.length} ratings</Tag>
+              <Tag
+                color={
+                  ratings.length > 0
+                    ? ratings.length > 1
+                      ? "green"
+                      : "orange"
+                    : ""
+                }
+              >
+                {ratings.length} ratings
+              </Tag>
             ) : ratings.length > 0 ? (
               <Badge count={ratings.length}>
                 <Rate
@@ -678,7 +688,13 @@ function RatingCard({
                   >{`${label}: `}</p>
                 </td>
                 <td>
-                  {cookies.get('config:hideRatings') === 'true' ? <Tooltip title="Ratings Hidden" mouseEnterDelay={0.5}><Rate disabled defaultValue={0} className='hidden-rate' /> </Tooltip> : <Rate disabled defaultValue={attributes[attrName] || 0} />}
+                  {cookies.get("config:hideRatings") === "true" ? (
+                    <Tooltip title="Ratings hidden" mouseEnterDelay={0.5}>
+                      <Rate disabled defaultValue={0} className="hidden-rate" />{" "}
+                    </Tooltip>
+                  ) : (
+                    <Rate disabled defaultValue={attributes[attrName] || 0} />
+                  )}
                 </td>
               </tr>
             );
@@ -687,7 +703,13 @@ function RatingCard({
       </table>
       {notes && notes.length !== 0 ? <div style={{ height: 14 }} /> : <></>}
       <div style={{ width: "100%", textAlign: "center" }}>
-        <ReactMarkdown>{notes}</ReactMarkdown>
+        {cookies.get("config:hideRatings") === "true" ? (
+          <Tooltip title="Rating text hidden" mouseEnterDelay={0.5}>
+            {[...notes].map((c) => (c === " " ? c : "▒")).join("")}
+          </Tooltip>
+        ) : (
+          <ReactMarkdown>{notes}</ReactMarkdown>
+        )}
       </div>
     </Card>
   );
