@@ -198,6 +198,10 @@ function MainPage() {
   const [filter, setFilter] = useState(() => (x) => x.map(() => 1));
   const history = useHistory();
   const order = filter(data || []);
+  const [page, setPage] = useQueryParam('page');
+  if (!page) {
+    setPage(1);
+  }
 
   const comparatorKeys = [
     (_, xi) => order[xi], // Search Rank
@@ -264,6 +268,10 @@ function MainPage() {
         dataSource={sortedData}
         loading={data === undefined}
         className="forward-table"
+        pagination={{current: page}}
+        onChange={pagination => {
+          setPage(pagination.current);
+        }}
       >
         <Column title="Name" dataIndex="name" key="name" />
         <Column
