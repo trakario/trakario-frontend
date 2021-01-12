@@ -36,7 +36,12 @@ import TimeDiff from "js-time-diff";
 const { Header, Footer, Content } = Layout;
 const { Column } = Table;
 
-const allAttributes = ["enthusiasm", "skill", "relevance", "overall"];
+const allAttributes = [
+  "enthusiasm",
+  "skill",
+  "relevance",
+  "overall"
+];
 const stageToColor = {
   unprocessed: "blue",
   "invite-sent": "cyan",
@@ -202,7 +207,7 @@ function MainPage() {
   const comparatorKeys = [
     (_, xi) => order[xi], // Search Rank
     (x) => stages.indexOf(x.stage), // Stage
-    (x) => -(x.dateSubmitted || 0), // Date submitted
+    (x) => -(Date.parse(x.dateSubmitted) || 0), // Date submitted
   ];
   let sortedData = (data || [])
     .map((v, i) => [v, i])
@@ -216,7 +221,7 @@ function MainPage() {
         const mapper = comparatorKeys[comparatorIndex];
         const vx = mapper(...xt);
         const vy = mapper(...yt);
-        if (vx != vy) {
+        if (vx !== vy) {
           return vx < vy ? -1 : 1;
         }
       }
@@ -309,9 +314,7 @@ function MainPage() {
           title="Intro"
           dataIndex="emailText"
           key="emailText"
-          render={(text) =>
-            text.length > 60 ? text.slice(0, 60) + "..." : text
-          }
+          ellipsis={true}
         />
         <Column
           title="Date"
