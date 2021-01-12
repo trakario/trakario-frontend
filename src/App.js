@@ -36,12 +36,7 @@ import TimeDiff from "js-time-diff";
 const { Header, Footer, Content } = Layout;
 const { Column } = Table;
 
-const allAttributes = [
-  "enthusiasm",
-  "skill",
-  "relevance",
-  "overall"
-];
+const allAttributes = ["enthusiasm", "skill", "relevance", "overall"];
 const stageToColor = {
   unprocessed: "blue",
   "invite-sent": "cyan",
@@ -228,7 +223,6 @@ function MainPage() {
       return 0;
     })
     .map(([x, _]) => x);
-
   useEffect(() => {
     apiRequest("/applicants").then((d) => {
       if (d && d.length > 0) {
@@ -320,9 +314,7 @@ function MainPage() {
           title="Date"
           dataIndex="dateSubmitted"
           key="dateSubmitted"
-          render={date => (
-            <DateTag date={date}/>
-          )}
+          render={(date) => <DateTag date={date} />}
         />
         <Column
           title="Stage"
@@ -356,6 +348,10 @@ function AddRatingCard({ applicantId, onFinished, onCancel }) {
       form={form}
       name="basic"
       onFinish={(values) => {
+        cookies.set("reviewerName", values.rater, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30,
+        });
         setLoading(true);
         apiRequest(`/applicants/${applicantId}/ratings`, {
           method: "POST",
@@ -386,7 +382,12 @@ function AddRatingCard({ applicantId, onFinished, onCancel }) {
         className="forward"
         type="inner"
         title={
-          <Form.Item noStyle name="rater" rules={[{ required: true }]}>
+          <Form.Item
+            noStyle
+            name="rater"
+            rules={[{ required: true }]}
+            initialValue={cookies.get("reviewerName")}
+          >
             <Input placeholder="Reviewer Name" />
           </Form.Item>
         }
