@@ -17,6 +17,7 @@ import {
   Tag,
   Popover,
   List,
+  Tooltip,
 } from "antd";
 import "./App.less";
 import ReactMarkdown from "react-markdown";
@@ -30,6 +31,7 @@ import {
 import { DeleteOutlined } from "@ant-design/icons";
 import { useQueryParam, StringParam } from "use-query-params";
 import Cookies from "universal-cookie";
+import TimeDiff from "js-time-diff";
 
 const { Header, Footer, Content } = Layout;
 const { Column } = Table;
@@ -196,23 +198,29 @@ function MainPage() {
   const [filter, setFilter] = useState(() => (x) => x.map(() => 1));
   const history = useHistory();
   const order = filter(data || []);
+
+  const comparatorKeys = [
+    (_, xi) => order[xi], // Search Rank
+    (x) => stages.indexOf(x.stage), // Stage
+    (x) => -(x.dateSubmitted || 0), // Date submitted
+  ];
   let sortedData = (data || [])
     .map((v, i) => [v, i])
     .filter(([_, i]) => isFinite(order[i]))
     .sort((xt, yt) => {
-      const [x, xi] = xt;
-      const [y, yi] = yt;
-      const ox = order[xi];
-      const oy = order[yi];
-      if (ox == oy) {
-        const sx = stages.indexOf(x.stage);
-        const sy = stages.indexOf(y.stage);
-        if (sx === sy) {
-          return x.name > y.name;
+      for (
+        let comparatorIndex = 0;
+        comparatorIndex < comparatorKeys.length;
+        ++comparatorIndex
+      ) {
+        const mapper = comparatorKeys[comparatorIndex];
+        const vx = mapper(...xt);
+        const vy = mapper(...yt);
+        if (vx != vy) {
+          return vx < vy ? -1 : 1;
         }
-        return sx > sy;
       }
-      return ox > oy;
+      return 0;
     })
     .map(([x, _]) => x);
 
@@ -273,7 +281,7 @@ function MainPage() {
             </a>
           )}
         />
-        <Column
+        {/* <Column
           title="Resume"
           dataIndex="resumeUrl"
           key="resumeUrl"
@@ -296,7 +304,7 @@ function MainPage() {
               <></>
             )
           }
-        />
+        /> */}
         <Column
           title="Intro"
           dataIndex="emailText"
@@ -304,6 +312,14 @@ function MainPage() {
           render={(text) =>
             text.length > 60 ? text.slice(0, 60) + "..." : text
           }
+        />
+        <Column
+          title="Date"
+          dataIndex="dateSubmitted"
+          key="dateSubmitted"
+          render={date => (
+            <DateTag date={date}/>
+          )}
         />
         <Column
           title="Stage"
@@ -428,6 +444,20 @@ function AddRatingCard({ applicantId, onFinished, onCancel }) {
         </Form.Item>
       </Card>
     </Form>
+  );
+}
+
+function DateTag({ date }) {
+  if (!date) {
+    return <></>;
+  }
+  date = new Date(date);
+  return (
+    <Tooltip
+      title={date.toLocaleDateString() + " " + date.toLocaleTimeString()}
+    >
+      <Tag>{TimeDiff(date)}</Tag>
+    </Tooltip>
   );
 }
 
@@ -623,55 +653,29 @@ function ApplicantPage(props) {
             <Col key="name">
               {isEditingName ? (
                 <Form
-                onFinish={(values) =>
-                  apiRequest(`/applicants/${applicantId}/name`, {
-                    method: "PUT",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Accept: "application/json",
-                    },
-                    body: JSON.stringify(values.name),
-                  }).then((v) => {
-                    setApplicantData({ ...d, name: v });
-                    setIsEditingName(false);
-                  })
-                }
-              >
-                <Form.Item noStyle name="name" initialValue={d.name}>
-                  <Input placeholder="Applicant Name"></Input>
-                </Form.Item>
-              </Form>
+                  onFinish={(values) =>
+                    apiRequest(`/applicants/${applicantId}/name`, {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                      },
+                      body: JSON.stringify(values.name),
+                    }).then((v) => {
+                      setApplicantData({ ...d, name: v });
+                      setIsEditingName(false);
+                    })
+                  }
+                >
+                  <Form.Item noStyle name="name" initialValue={d.name}>
+                    <Input placeholder="Applicant Name"></Input>
+                  </Form.Item>
+                </Form>
               ) : (
                 <h1 onClick={() => setIsEditingName(true)}>{d.name}</h1>
               )}
             </Col>
-            {d.githubUrl ? (
-              <Col key="github">
-                <Button
-                  href={d.githubUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  GitHub
-                </Button>
-              </Col>
-            ) : (
-              <></>
-            )}
-            {d.resumeUrl ? (
-              <Col key="resume">
-                <Button
-                  href={backendUrl + d.resumeUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  Resume
-                </Button>
-              </Col>
-            ) : (
-              <></>
-            )}
-            <Col key="stage">
+            <Col key="time">
               <StageTag
                 applicantId={d.id}
                 stage={d.stage}
@@ -679,6 +683,31 @@ function ApplicantPage(props) {
                   setApplicantData({ ...applicantData, stage })
                 }
               />
+              {d.githubUrl ? (
+                <Tag
+                  onClick={() => {
+                    window.open(d.githubUrl, "_blank", "noreferrer,noopener");
+                  }}
+                  style={{ cursor: "pointer" }}
+                >
+                  GitHub
+                </Tag>
+              ) : (
+                <></>
+              )}
+              {d.resumeUrl ? (
+                <Tag
+                  onClick={() => {
+                    window.open(d.resumeUrl, "_blank", "noreferrer,noopener");
+                  }}
+                  style={{ cursor: "pointer" }}
+                >
+                  Resume
+                </Tag>
+              ) : (
+                <></>
+              )}
+              <DateTag date={d.dateSubmitted} />
             </Col>
           </Row>
           <div style={{ height: "0.6em" }} />

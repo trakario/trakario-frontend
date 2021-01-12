@@ -7,6 +7,7 @@
     "@craco/craco": "^6.0.0",
     "antd": "^4.10.0",
     "craco-less": "^1.17.1",
+    "js-time-diff": "^1.0.0",
     "moment": "^2.29.1",
     "query-string": "^6.13.8",
     "react": "^17.0.1",

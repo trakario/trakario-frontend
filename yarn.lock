@@ -6789,6 +6789,11 @@ jest@26.6.0:
     import-local "^3.0.2"
     jest-cli "^26.6.0"
 
+js-time-diff@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/js-time-diff/-/js-time-diff-1.0.0.tgz#e9a15c61d2bb4266e93654d062041a369a5a53d0"
+  integrity sha512-lj96itrkLYzdct+L98MavQDKEW84KJGazbPcHCSGzRuXq/pzeDglCPmiKaN8GJYd3XlBpc0Gmhvo4KXXvJN8yw==
+
 "js-tokens@^3.0.0 || ^4.0.0", js-tokens@^4.0.0:
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/js-tokens/-/js-tokens-4.0.0.tgz#19203fb59991df98e3a287050d4647cdeaf32499"
