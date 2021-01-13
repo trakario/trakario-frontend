@@ -30,10 +30,16 @@ import {
   Link,
   useLocation,
 } from "react-router-dom";
-import { DeleteOutlined, SettingOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  SettingOutlined,
+  CopyOutlined,
+} from "@ant-design/icons";
 import { useQueryParam, StringParam } from "use-query-params";
 import Cookies from "universal-cookie";
 import TimeDiff from "js-time-diff";
+
+import { CopyToClipboard } from "react-copy-to-clipboard";
 
 const { Header, Footer, Content } = Layout;
 const { Column } = Table;
@@ -197,17 +203,43 @@ function useSearcher(query) {
           if (isNaN(ratingVal)) {
             message.warning(`Expecting integer: "${value}"`);
           } else {
-            filters.push(x =>
-              x.ratings.some(r => r.attributes.overall === ratingVal)
+            filters.push((x) =>
+              x.ratings.some((r) => r.attributes.overall === ratingVal)
             );
           }
+          break;
+        case "stage":
+          filters.push((x) => x.stage === value);
+          break;
+        case "intro":
+          filters.push((x) =>
+            x.emailText.toLowerCase().includes(value.toLowerCase())
+          );
+          break;
+        case "introlengthmin":
+          const valueInt = parseInt(value);
+          if (isNaN(valueInt)) {
+            message.warning(`Expecting integer: "${value}"`);
+          } else {
+            filters.push((x) => x.emailText.length >= valueInt);
+          }
+          break;
+        case "email":
+          filters.push((x) =>
+            x.email.toLowerCase().includes(value.toLowerCase())
+          );
+          break;
+        case "name":
+          filters.push((x) =>
+            x.name.toLowerCase().includes(value.toLowerCase())
+          );
           break;
         case "sort":
           const match = /^(.*?)(?:\.(.*))?$/.exec(value);
           const sortKeyName = match[1];
           const sortKeyMethod = match[2];
           let isAsc = true;
-          switch((sortKeyMethod || "").toLowerCase()) {
+          switch ((sortKeyMethod || "").toLowerCase()) {
             case "":
             case "asc":
             case "ascend":
@@ -224,16 +256,15 @@ function useSearcher(query) {
               message.warning(`Unknown sort key method "${sortKeyMethod}"`);
               break;
           }
-          console.log('CHECK', sortKeyName)
           switch (sortKeyName) {
             case "date":
-              comparatorKeys.push(x => (isAsc ? 1 : -1) * dateSortKey(x));
+              comparatorKeys.push((x) => (isAsc ? 1 : -1) * dateSortKey(x));
               break;
             case "rating":
-              comparatorKeys.push(x => (isAsc ? 1 : -1) * ratingSortKey(x));
+              comparatorKeys.push((x) => (isAsc ? 1 : -1) * ratingSortKey(x));
               break;
             case "stage":
-              comparatorKeys.push(x => (isAsc ? 1 : -1) * stageSortKey(x));
+              comparatorKeys.push((x) => (isAsc ? 1 : -1) * stageSortKey(x));
               break;
             default:
               message.warning(`Unknown sort method "${sortKeyName}"`);
@@ -288,7 +319,6 @@ function useSearcher(query) {
     }
     return 0;
   };
-  console.log("KEYS:", comparatorKeys)
   return { filter, sorter };
 }
 
@@ -305,7 +335,7 @@ function MainPage() {
     setPage(1);
   }
 
-  let sortedData = (data || []).filter(filter).sort(sorter);
+  let filteredData = (data || []).filter(filter).sort(sorter);
   useEffect(() => {
     apiRequest("/applicants").then((d) => {
       if (d && d.length > 0) {
@@ -382,6 +412,45 @@ function MainPage() {
           >
             <Button type="text" shape="circle" icon={<SettingOutlined />} />
           </Popover>
+
+          <Popover
+            content={
+              <List>
+                <List.Item>
+                  <CopyToClipboard
+                    text={filteredData.map((x) => x.email).join(",")}
+                    onCopy={() =>
+                      message.success("Copied emails to clipboard.")
+                    }
+                  >
+                    <Button type="dashed" style={{ width: "100%" }}>
+                      Only Emails
+                    </Button>
+                  </CopyToClipboard>
+                </List.Item>
+                <List.Item>
+                  <CopyToClipboard
+                    text={JSON.stringify(filteredData)}
+                    onCopy={() =>
+                      message.success("Copied applicants to clipboard.")
+                    }
+                  >
+                    <Button type="dashed" style={{ width: "100%" }}>
+                      All as JSON
+                    </Button>
+                  </CopyToClipboard>
+                </List.Item>
+              </List>
+            }
+            title={
+              <div style={{ textAlign: "center" }}>
+                <b>Copy...</b>
+              </div>
+            }
+            trigger="click"
+          >
+            <Button type="text" shape="circle" icon={<CopyOutlined />} />
+          </Popover>
         </Col>
       </Row>
       <div style={{ height: 20 }} />
@@ -394,7 +463,7 @@ function MainPage() {
       <div style={{ height: 24 }} />
       <Table
         components={{ body: { row: ApplicantRow } }}
-        dataSource={sortedData}
+        dataSource={filteredData}
         loading={data === undefined}
         className="forward-table"
         pagination={{ current: page }}
@@ -417,30 +486,6 @@ function MainPage() {
             </a>
           )}
         />
-        {/* <Column
-          title="Resume"
-          dataIndex="resumeUrl"
-          key="resumeUrl"
-          render={(resumeUrl) =>
-            resumeUrl ? (
-              <a
-                href={backendUrl + resumeUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
-                  {resumeUrl.split("/").slice(-1)[0]}
-                </span>
-              </a>
-            ) : (
-              <></>
-            )
-          }
-        /> */}
         <Column
           title="Intro"
           dataIndex="emailText"
