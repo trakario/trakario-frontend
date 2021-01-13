@@ -51,6 +51,7 @@ const stageToColor = {
 };
 
 const stages = [
+  "accepted",
   "considering-accepting",
   "considering-rejecting",
   "invite-sent",
@@ -59,8 +60,14 @@ const stages = [
   "unprocessed",
 
   "rejected",
-  "accepted",
 ];
+
+const dateSortKey = (x) => -(Date.parse(x.dateSubmitted) || 0);
+const ratingSortKey = (x) => {
+  const ratings = x.ratings.map((r) => r.attributes.overall);
+  return ratings.reduce((a, b) => a + b, 0) / Math.max(ratings.length, 1);
+};
+const stageSortKey = (x) => stages.indexOf(x.stage);
 
 const cookies = new Cookies();
 const backendUrl = process.env.REACT_APP_BACKEND_URL;
@@ -170,36 +177,126 @@ function StageTag({ applicantId, stage, onNewStage }) {
   );
 }
 
-function Searcher({ setFilter, ...props }) {
-  return (
-    <Input.Search
-      placeholder="Search"
-      enterButton={true}
-      onSearch={(query) => {
-        setFilter(() => (data) => {
-          const tester = new RegExp(query, "i");
-          return data.map((x) =>
-            Math.min(
-              ...["name", "email", "stage", "emailText"].map((key, i) => {
-                if (tester.test(x[key])) {
-                  return i;
-                }
-                return Infinity;
-              })
-            )
-          );
-        });
-      }}
-      {...props}
-    ></Input.Search>
-  );
+function useSearcher(query) {
+  const filters = [];
+  const comparatorKeys = [];
+
+  const words = [];
+  const regex = /(?:\-([a-z]+):(?:"([^"]*)"|([^\s]*))|(\S+))/g;
+  let match = regex.exec(query);
+  while (match !== null) {
+    const word = match[4];
+    if (word) {
+      words.push(word);
+    } else {
+      const key = match[1];
+      const value = match[2] || match[3];
+      switch (key.toLowerCase()) {
+        case "rating":
+          const ratingVal = parseInt(value);
+          if (isNaN(ratingVal)) {
+            message.warning(`Expecting integer: "${value}"`);
+          } else {
+            filters.push(x =>
+              x.ratings.some(r => r.attributes.overall === ratingVal)
+            );
+          }
+          break;
+        case "sort":
+          const match = /^(.*?)(?:\.(.*))?$/.exec(value);
+          const sortKeyName = match[1];
+          const sortKeyMethod = match[2];
+          let isAsc = true;
+          switch((sortKeyMethod || "").toLowerCase()) {
+            case "":
+            case "asc":
+            case "ascend":
+            case "ascending":
+              isAsc = true;
+              break;
+            case "des":
+            case "desc":
+            case "descend":
+            case "descending":
+              isAsc = false;
+              break;
+            default:
+              message.warning(`Unknown sort key method "${sortKeyMethod}"`);
+              break;
+          }
+          console.log('CHECK', sortKeyName)
+          switch (sortKeyName) {
+            case "date":
+              comparatorKeys.push(x => (isAsc ? 1 : -1) * dateSortKey(x));
+              break;
+            case "rating":
+              comparatorKeys.push(x => (isAsc ? 1 : -1) * ratingSortKey(x));
+              break;
+            case "stage":
+              comparatorKeys.push(x => (isAsc ? 1 : -1) * stageSortKey(x));
+              break;
+            default:
+              message.warning(`Unknown sort method "${sortKeyName}"`);
+              break;
+          }
+          break;
+        default:
+          message.warning(`Unknown filter "${key}"`);
+      }
+    }
+    match = regex.exec(query);
+  }
+  if (comparatorKeys.length === 0) {
+    comparatorKeys.push(stageSortKey);
+    comparatorKeys.push(dateSortKey);
+  }
+  if (words.length > 0) {
+    const phrase = words.join(" ");
+    const searchIndices = ["name", "email", "stage", "emailText"];
+    const getSearchMatchIndex = (x) => {
+      for (let i = 0; i < searchIndices.length; ++i) {
+        const value = x[searchIndices[i]];
+        if (value && value.includes(phrase)) {
+          return i;
+        }
+      }
+      return searchIndices.length;
+    };
+    filters.push((x) => getSearchMatchIndex(x) !== searchIndices.length);
+    comparatorKeys.unshift(getSearchMatchIndex);
+  }
+
+  const filter = (x) => filters.every((f) => f(x));
+  const sorter = (x, y) => {
+    for (
+      let comparatorIndex = 0;
+      comparatorIndex < comparatorKeys.length;
+      ++comparatorIndex
+    ) {
+      const mapper = comparatorKeys[comparatorIndex];
+      let vx = mapper(x);
+      let vy = mapper(y);
+      if (isNaN(vx)) {
+        vx = Infinity;
+      }
+      if (isNaN(vy)) {
+        vy = Infinity;
+      }
+      if (vx !== vy) {
+        return vx < vy ? -1 : 1;
+      }
+    }
+    return 0;
+  };
+  console.log("KEYS:", comparatorKeys)
+  return { filter, sorter };
 }
 
 function MainPage() {
   const [data, setData] = useState(undefined);
-  const [filter, setFilter] = useState(() => (x) => x.map(() => 1));
+  const [query, setQuery] = useState("");
+  const { filter, sorter } = useSearcher(query);
   const history = useHistory();
-  const order = filter(data || []);
   const [page, setPage] = useQueryParam("page");
   const [hideRatings, setHideRatings] = useState(
     cookies.get("config:hideRatings")
@@ -208,30 +305,7 @@ function MainPage() {
     setPage(1);
   }
 
-  const comparatorKeys = [
-    (_, xi) => order[xi], // Search Rank
-    (x) => stages.indexOf(x.stage), // Stage
-    (x) => -(Date.parse(x.dateSubmitted) || 0), // Date submitted
-  ];
-  let sortedData = (data || [])
-    .map((v, i) => [v, i])
-    .filter(([_, i]) => isFinite(order[i]))
-    .sort((xt, yt) => {
-      for (
-        let comparatorIndex = 0;
-        comparatorIndex < comparatorKeys.length;
-        ++comparatorIndex
-      ) {
-        const mapper = comparatorKeys[comparatorIndex];
-        const vx = mapper(...xt);
-        const vy = mapper(...yt);
-        if (vx !== vy) {
-          return vx < vy ? -1 : 1;
-        }
-      }
-      return 0;
-    })
-    .map(([x, _]) => x);
+  let sortedData = (data || []).filter(filter).sort(sorter);
   useEffect(() => {
     apiRequest("/applicants").then((d) => {
       if (d && d.length > 0) {
@@ -311,7 +385,12 @@ function MainPage() {
         </Col>
       </Row>
       <div style={{ height: 20 }} />
-      <Searcher setFilter={setFilter} className="forward" />
+      <Input.Search
+        placeholder="Search"
+        className="forward"
+        enterButton={true}
+        onSearch={setQuery}
+      ></Input.Search>
       <div style={{ height: 24 }} />
       <Table
         components={{ body: { row: ApplicantRow } }}
