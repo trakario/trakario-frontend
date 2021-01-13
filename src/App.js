@@ -198,7 +198,7 @@ function useSearcher(query) {
       const key = match[1];
       const value = match[2] || match[3];
       switch (key.toLowerCase()) {
-        case "rating":
+        case "rating": {
           const ratingVal = parseInt(value);
           if (isNaN(ratingVal)) {
             message.warning(`Expecting integer: "${value}"`);
@@ -208,6 +208,33 @@ function useSearcher(query) {
             );
           }
           break;
+        }
+        case "ratingmin": {
+          const ratingVal = parseFloat(value);
+          if (isNaN(ratingVal)) {
+            message.warning(`Expecting float: "${value}"`);
+          } else {
+            filters.push((x) => {
+              const ratings = x.ratings.map((r) => r.attributes.overall);
+              const avRating = ratings.reduce((a, b) => a + b) / ratings.length;
+              return avRating >= ratingVal;
+            });
+          }
+          break;
+        }
+        case "ratingmax": {
+          const ratingVal = parseFloat(value);
+          if (isNaN(ratingVal)) {
+            message.warning(`Expecting float: "${value}"`);
+          } else {
+            filters.push((x) => {
+              const ratings = x.ratings.map((r) => r.attributes.overall);
+              const avRating = ratings.reduce((a, b) => a + b) / ratings.length;
+              return avRating <= ratingVal;
+            });
+          }
+          break;
+        }
         case "stage":
           filters.push((x) => x.stage === value);
           break;
@@ -216,7 +243,7 @@ function useSearcher(query) {
             x.emailText.toLowerCase().includes(value.toLowerCase())
           );
           break;
-        case "introlengthmin":
+        case "introlengthmin": {
           const valueInt = parseInt(value);
           if (isNaN(valueInt)) {
             message.warning(`Expecting integer: "${value}"`);
@@ -224,9 +251,24 @@ function useSearcher(query) {
             filters.push((x) => x.emailText.length >= valueInt);
           }
           break;
+        }
+        case "introlengthmax": {
+          const valueInt = parseInt(value);
+          if (isNaN(valueInt)) {
+            message.warning(`Expecting integer: "${value}"`);
+          } else {
+            filters.push((x) => x.emailText.length <= valueInt);
+          }
+          break;
+        }
         case "email":
           filters.push((x) =>
             x.email.toLowerCase().includes(value.toLowerCase())
+          );
+          break;
+        case "emailnot":
+          filters.push(
+            (x) => !x.email.toLowerCase().includes(value.toLowerCase())
           );
           break;
         case "name":
@@ -477,13 +519,12 @@ function MainPage() {
           dataIndex="email"
           key="email"
           render={(email) => (
-            <a
-              href={`mailto:${email}`}
-              target="_blank"
-              rel="noreferrer noopener"
+            <CopyToClipboard
+              text={email}
+              onCopy={() => message.success("Copied email to clipboard.")}
             >
-              {email}
-            </a>
+              <a onClick={(e) => e.stopPropagation()}>{email}</a>
+            </CopyToClipboard>
           )}
         />
         <Column
@@ -505,7 +546,6 @@ function MainPage() {
           render={(ratings) => {
             let average = (array) =>
               array.reduce((a, b) => a + b) / array.length;
-            // return;
             return hideRatings ? (
               <Tag
                 color={
