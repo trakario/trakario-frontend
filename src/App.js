@@ -59,12 +59,13 @@ const stageToColor = {
 const stages = [
   "accepted",
   "considering-accepting",
-  "considering-rejecting",
-  "invite-sent",
+
   "scheduled",
   "pending-evaluation",
+  "invite-sent",
   "unprocessed",
 
+  "considering-rejecting",
   "rejected",
 ];
 
